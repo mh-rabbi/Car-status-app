@@ -28,6 +28,8 @@ import java.io.OutputStream;
 import java.util.Set;
 import java.util.UUID;
 
+import java.util.HashMap;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -43,6 +45,9 @@ public class MainActivity extends AppCompatActivity {
     private TextView speedValue, rpmValue, mileageValue;
     private Button refreshButton;
 
+    private TextView dtcCodes;
+    private Button checkDTC;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -55,6 +60,8 @@ public class MainActivity extends AppCompatActivity {
         rpmValue = findViewById(R.id.rpmValue);
         mileageValue = findViewById(R.id.mileageValue);
         refreshButton = findViewById(R.id.refreshButton);
+        dtcCodes = findViewById(R.id.dtcCodes);
+        checkDTC = findViewById(R.id.checkDTC);
 
         // Initialize Bluetooth
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -69,6 +76,15 @@ public class MainActivity extends AppCompatActivity {
             sendOBDCommand("010D"); // Get Speed
             sendOBDCommand("010C"); // Get RPM
             sendOBDCommand("0121"); // Get Mileage
+        });
+
+        // Check DTC codes when button is clicked
+        checkDTC.setOnClickListener(v -> {
+            if (bluetoothSocket != null && bluetoothSocket.isConnected()) {
+                sendOBDCommand("03"); // Fetch DTC codes
+            } else {
+                Toast.makeText(this, "OBD-II not connected", Toast.LENGTH_SHORT).show();
+            }
         });
 
     }
@@ -146,6 +162,55 @@ public class MainActivity extends AppCompatActivity {
                     Integer.parseInt(parts[5], 16);
             mileageValue.setText(mileage + " km");
         }
+
+        if (command.equals("03")) { // DTC Error Codes
+            String dtcMessage = decodeDTC(response);
+            dtcCodes.setText(dtcMessage);
+        }
+    }
+
+    // Function to Decode DTC Codes
+    private String decodeDTC(String response) {
+        Map<String, String> dtcDescriptions = new HashMap<>();
+        dtcDescriptions.put("P0300", "Random/Multiple Cylinder Misfire Detected");
+        dtcDescriptions.put("P0420", "Catalytic Converter Efficiency Below Threshold");
+        dtcDescriptions.put("P0171", "System Too Lean (Bank 1)");
+        dtcDescriptions.put("P0172", "System Too Rich (Bank 1)");
+        dtcDescriptions.put("P0455", "Evaporative Emission System Leak Detected");
+        dtcDescriptions.put("P0113", "Intake Air Temperature Sensor High Input");
+        dtcDescriptions.put("P0500", "Vehicle Speed Sensor Malfunction");
+        dtcDescriptions.put("P0700", "Transmission Control System Malfunction");
+
+        if (response.startsWith("43")) {
+            StringBuilder dtcResult = new StringBuilder();
+            String[] parts = response.split(" ");
+
+            for (int i = 1; i < parts.length; i += 2) {
+                if (i + 1 < parts.length) {
+                    int firstByte = Integer.parseInt(parts[i], 16);
+                    int secondByte = Integer.parseInt(parts[i + 1], 16);
+
+                    // DTC Code Prefix Mapping
+                    char type;
+                    switch ((firstByte & 0xC0) >> 6) {
+                        case 0: type = 'P'; break; // Powertrain
+                        case 1: type = 'C'; break; // Chassis
+                        case 2: type = 'B'; break; // Body
+                        case 3: type = 'U'; break; // Network
+                        default: type = 'P'; break;
+                    }
+
+                    int code = ((firstByte & 0x3F) << 8) | secondByte;
+                    String dtcCode = type + String.format("%04d", code);
+                    String description = dtcDescriptions.getOrDefault(dtcCode, "Unknown Code");
+
+                    dtcResult.append(dtcCode).append(" - ").append(description).append("\n");
+                }
+            }
+
+            return dtcResult.length() > 0 ? dtcResult.toString() : "No errors found";
+        }
+        return "No DTC codes found";
     }
 
 

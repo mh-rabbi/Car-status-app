@@ -104,4 +104,40 @@
         android:text="Refresh Data"
         android:layout_marginTop="20dp"/>
 
+    <!-- DTC Error Code Section -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="15dp"
+        android:background="@android:color/holo_red_light"
+        android:orientation="vertical"
+        android:layout_marginBottom="10dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Error Codes:"
+            android:textSize="18sp"
+            android:textStyle="bold"/>
+
+        <TextView
+            android:id="@+id/dtcCodes"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="No errors"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"
+            android:layout_marginTop="5dp"/>
+    </LinearLayout>
+
+    <!-- Button to Check DTCs -->
+    <Button
+        android:id="@+id/checkDTC"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Check DTCs"
+        android:layout_marginTop="20dp"/>
+
+
 </LinearLayout>
