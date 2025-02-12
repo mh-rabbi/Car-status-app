@@ -139,5 +139,45 @@
         android:text="Check DTCs"
         android:layout_marginTop="20dp"/>
 
+    <!-- Odometer Tampering Check -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="15dp"
+        android:background="@android:color/holo_blue_light"
+        android:orientation="vertical"
+        android:layout_marginBottom="10dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Enter Dashboard Mileage:"
+            android:textSize="18sp"
+            android:textStyle="bold"/>
+
+        <EditText
+            android:id="@+id/userMileageInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Enter mileage in km"
+            android:inputType="number"/>
+
+        <TextView
+            android:id="@+id/tamperStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tamper status: Unknown"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginTop="5dp"/>
+
+        <Button
+            android:id="@+id/checkTamper"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Check Meter Tampering"
+            android:layout_marginTop="10dp"/>
+    </LinearLayout>
+
 
 </LinearLayout>

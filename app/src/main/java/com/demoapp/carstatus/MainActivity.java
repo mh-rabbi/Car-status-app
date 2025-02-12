@@ -1,9 +1,11 @@
 package com.demoapp.carstatus;
 
+import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.graphics.Insets;
@@ -13,12 +15,12 @@ import androidx.core.view.WindowInsetsCompat;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.EditText;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -30,6 +32,7 @@ import java.util.UUID;
 
 import java.util.HashMap;
 import java.util.Map;
+import android.graphics.Color;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -37,7 +40,7 @@ public class MainActivity extends AppCompatActivity {
     private BluetoothAdapter bluetoothAdapter;
     private BluetoothSocket bluetoothSocket;
     private BluetoothDevice obdDevice;
-    private UUID OBD_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+    private final UUID OBD_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
     private InputStream inputStream;
     private OutputStream outputStream;
@@ -48,6 +51,11 @@ public class MainActivity extends AppCompatActivity {
     private TextView dtcCodes;
     private Button checkDTC;
 
+    private TextView tamperStatus;
+    private Button checkTamper;
+    private EditText userMileageInput;
+
+    @SuppressLint("MissingInflatedId")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -62,6 +70,9 @@ public class MainActivity extends AppCompatActivity {
         refreshButton = findViewById(R.id.refreshButton);
         dtcCodes = findViewById(R.id.dtcCodes);
         checkDTC = findViewById(R.id.checkDTC);
+        tamperStatus = findViewById(R.id.tamperStatus);
+        checkTamper = findViewById(R.id.checkTamper);
+        userMileageInput = findViewById(R.id.userMileageInput);
 
         // Initialize Bluetooth
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -87,7 +98,29 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // Check for tampering when button is clicked
+        checkTamper.setOnClickListener(v -> {
+            String userMileageStr = userMileageInput.getText().toString();
+            if (!userMileageStr.isEmpty()) {
+                sendOBDCommand("0121"); // Fetch actual mileage
+            } else {
+                Toast.makeText(this, "Enter dashboard mileage", Toast.LENGTH_SHORT).show();
+            }
+        });
+
     }
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 1) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Bluetooth Permission Granted", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Bluetooth Permission Denied", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
 
     private void connectToOBDDevice() {
         if (!bluetoothAdapter.isEnabled()) {
@@ -96,15 +129,10 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
+            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.BLUETOOTH_CONNECT}, 1);
             return;
         }
+
         Set<BluetoothDevice> pairedDevices = bluetoothAdapter.getBondedDevices();
         for (BluetoothDevice device : pairedDevices) {
             if (device.getName().contains("OBD") || device.getName().contains("ELM")) {
@@ -149,7 +177,10 @@ public class MainActivity extends AppCompatActivity {
 
     private void processOBDResponse(String command, String response) {
         String[] parts = response.split(" ");
-        if (command.equals("010D") && parts.length >= 3) { // Speed
+        if (parts.length < 3) {
+            Log.e(TAG, "Invalid response: " + response);
+            return;
+        } else if (command.equals("010D") && parts.length >= 3) { // Speed
             int speed = Integer.parseInt(parts[2], 16);
             speedValue.setText(speed + " km/h");
         } else if (command.equals("010C") && parts.length >= 4) { // RPM
@@ -167,6 +198,22 @@ public class MainActivity extends AppCompatActivity {
             String dtcMessage = decodeDTC(response);
             dtcCodes.setText(dtcMessage);
         }
+
+        if (!userMileageInput.getText().toString().isEmpty()) {
+            int userMileage = Integer.parseInt(userMileageInput.getText().toString());
+            int ecuMileage = Integer.parseInt(response.split(" ")[2], 16);
+
+            if (Math.abs(ecuMileage - userMileage) > 500) {
+                tamperStatus.setText("Warning: Possible Mileage Tampering Detected!");
+                tamperStatus.setTextColor(Color.RED);
+            } else {
+                tamperStatus.setText("No tampering detected.");
+                tamperStatus.setTextColor(Color.GREEN);
+            }
+        } else {
+            Toast.makeText(this, "Enter dashboard mileage", Toast.LENGTH_SHORT).show();
+        }
+
     }
 
     // Function to Decode DTC Codes
@@ -212,7 +259,5 @@ public class MainActivity extends AppCompatActivity {
         }
         return "No DTC codes found";
     }
-
-
 
 }
